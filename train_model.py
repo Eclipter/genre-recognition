@@ -23,7 +23,7 @@ FILTER_LENGTH = 5
 CONV_FILTER_COUNT = 256
 LSTM_COUNT = 256
 BATCH_SIZE = 32
-EPOCH_COUNT = 100
+EPOCH_COUNT = 30
 
 def train_model(data):
     x = data['x']
@@ -67,7 +67,7 @@ def train_model(data):
         )
 
     print('Training...')
-    model.fit(x_train, y_train, batch_size=BATCH_SIZE, nb_epoch=EPOCH_COUNT,
+    model.fit(x_train, y_train, batch_size=BATCH_SIZE, epochs=EPOCH_COUNT,
               validation_data=(x_val, y_val), verbose=1)
 
     return model
