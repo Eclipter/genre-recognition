@@ -3,19 +3,17 @@ GPU command:
 THEANO_FLAGS=mode=FAST_RUN,device=gpu,floatX=float32 python train_model.py
 '''
 
-from common import GENRES
-from tensorflow.keras.callbacks import Callback
-from tensorflow.keras.models import Model
-from tensorflow.keras.optimizers import RMSprop
-from tensorflow.keras import backend as K
-from tensorflow.keras.layers import Input, Dense, Lambda, Dropout, Activation, LSTM, \
-        TimeDistributed, Convolution1D, MaxPooling1D
-from sklearn.model_selection import train_test_split
-import numpy as np
+import os
 import pickle
 from optparse import OptionParser
-from sys import stderr, argv
-import os
+
+from sklearn.model_selection import train_test_split
+from tensorflow.keras.layers import Input, Dense, Dropout, Activation, LSTM, \
+    Convolution1D, MaxPooling1D
+from tensorflow.keras.models import Model
+from tensorflow.keras.optimizers import RMSprop
+
+from common import GENRES
 
 SEED = 42
 N_LAYERS = 3
@@ -23,13 +21,14 @@ FILTER_LENGTH = 5
 CONV_FILTER_COUNT = 256
 LSTM_COUNT = 256
 BATCH_SIZE = 32
-EPOCH_COUNT = 30
+EPOCH_COUNT = 60
+
 
 def train_model(data):
     x = data['x']
     y = data['y']
     (x_train, x_val, y_train, y_val) = train_test_split(x, y, test_size=0.3,
-            random_state=SEED)
+                                                        random_state=SEED)
 
     print('Building model...')
 
@@ -38,33 +37,26 @@ def train_model(data):
     model_input = Input(input_shape, name='input')
     layer = model_input
     for i in range(N_LAYERS):
-        # convolutional layer names are used by extract_filters.py
         layer = Convolution1D(
-                filters=CONV_FILTER_COUNT,
-                kernel_size=FILTER_LENGTH,
-                name='convolution_' + str(i + 1)
-            )(layer)
+            filters=CONV_FILTER_COUNT,
+            kernel_size=FILTER_LENGTH,
+            name='convolution_' + str(i + 1)
+        )(layer)
         layer = Activation('relu')(layer)
         layer = MaxPooling1D(2)(layer)
 
     layer = Dropout(0.5)(layer)
-    layer = LSTM(LSTM_COUNT, return_sequences=True)(layer)
-    layer = Dropout(0.5)(layer)
-    layer = TimeDistributed(Dense(len(GENRES)))(layer)
+    layer = LSTM(LSTM_COUNT)(layer)
+    layer = Dense(len(GENRES))(layer)
     layer = Activation('softmax', name='output_realtime')(layer)
-    time_distributed_merge_layer = Lambda(
-            function=lambda x: K.mean(x, axis=1), 
-            output_shape=lambda shape: (shape[0],) + shape[2:],
-            name='output_merged'
-        )
-    model_output = time_distributed_merge_layer(layer)
+    model_output = layer
     model = Model(model_input, model_output)
     opt = RMSprop(lr=0.00001)
     model.compile(
-            loss='categorical_crossentropy',
-            optimizer=opt,
-            metrics=['accuracy']
-        )
+        loss='categorical_crossentropy',
+        optimizer=opt,
+        metrics=['accuracy']
+    )
 
     print('Training...')
     model.fit(x_train, y_train, batch_size=BATCH_SIZE, epochs=EPOCH_COUNT,
@@ -72,21 +64,22 @@ def train_model(data):
 
     return model
 
+
 if __name__ == '__main__':
     parser = OptionParser()
     parser.add_option('-d', '--data_path', dest='data_path',
-            default=os.path.join(os.path.dirname(__file__),
-                'data/data.pkl'),
-            help='path to the data pickle', metavar='DATA_PATH')
+                      default=os.path.join(os.path.dirname(__file__),
+                                           'data/data.pkl'),
+                      help='path to the data pickle', metavar='DATA_PATH')
     parser.add_option('-m', '--model_path', dest='model_path',
-            default=os.path.join(os.path.dirname(__file__),
-                'models/model.yaml'),
-            help='path to the output model YAML file', metavar='MODEL_PATH')
+                      default=os.path.join(os.path.dirname(__file__),
+                                           'models/model.yaml'),
+                      help='path to the output model YAML file', metavar='MODEL_PATH')
     parser.add_option('-w', '--weights_path', dest='weights_path',
-            default=os.path.join(os.path.dirname(__file__),
-                'models/weights.h5'),
-            help='path to the output model weights hdf5 file',
-            metavar='WEIGHTS_PATH')
+                      default=os.path.join(os.path.dirname(__file__),
+                                           'models/weights.h5'),
+                      help='path to the output model weights hdf5 file',
+                      metavar='WEIGHTS_PATH')
     options, args = parser.parse_args()
 
     with open(options.data_path, 'rb') as f:
