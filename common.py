@@ -1,6 +1,6 @@
 # To avoid errors during importing librosa.
 import matplotlib
-matplotlib.use('Agg')
+# matplotlib.use('Agg')
 
 import numpy as np
 import librosa as lbr

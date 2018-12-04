@@ -5,6 +5,7 @@ from tensorflow.keras.models import model_from_yaml
 
 from common import GENRES
 from common import load_track, get_layer_output_function
+import matplotlib.pyplot as plt
 
 
 class GenreRecognizer():
@@ -33,6 +34,8 @@ def main():
                     for (genre_index, genre_name) in enumerate(GENRES)}
     print("Distribution: " + str(distribution))
     print("Assumed genre is: " + max(distribution.items(), key=operator.itemgetter(1))[0])
+    plt.pie(predictions[0], labels=GENRES, autopct='%1.1f%%', shadow=True, startangle=90)
+    plt.show()
 
 
 if __name__ == '__main__':
