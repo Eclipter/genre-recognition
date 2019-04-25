@@ -6,6 +6,10 @@ import tensorflow as tf
 
 from common import GENRES
 
+REGULARIZATION_RATE = 0.01
+
+BATCH_NORM_MOMENTUM = 0.9
+
 DROPOUT_RATE = 0.5
 
 POOL_SIZE = 2
@@ -15,9 +19,9 @@ VAL_SIZE = 0.3
 N_LAYERS = 3
 CONV_KERNEL_SIZE = 5
 CONV_FILTER_COUNT = 256
-LSTM_COUNT = 256
+LSTM_UNITS_COUNT = 256
 BATCH_SIZE = 32
-EPOCH_COUNT = 60
+EPOCH_COUNT = 150
 
 
 def train_model(train_data, model_path):
@@ -35,14 +39,19 @@ def train_model(train_data, model_path):
         layer = tf.keras.layers.Convolution1D(
             filters=CONV_FILTER_COUNT,
             kernel_size=CONV_KERNEL_SIZE,
-            name='convolution_' + str(i + 1)
+            name='convolution_' + str(i + 1),
+            kernel_regularizer=tf.keras.regularizers.l2(REGULARIZATION_RATE)
         )(layer)
+        layer = tf.keras.layers.BatchNormalization(momentum=BATCH_NORM_MOMENTUM)(layer)
         layer = tf.keras.layers.Activation('relu')(layer)
         layer = tf.keras.layers.MaxPooling1D(POOL_SIZE)(layer)
+        layer = tf.keras.layers.Dropout(DROPOUT_RATE)(layer)
 
-    layer = tf.keras.layers.Dropout(DROPOUT_RATE)(layer)
-    layer = tf.keras.layers.LSTM(LSTM_COUNT)(layer)
-    layer = tf.keras.layers.Dense(len(GENRES))(layer)
+    layer = tf.keras.layers.LSTM(
+        units=LSTM_UNITS_COUNT,
+        kernel_regularizer=tf.keras.regularizers.l2(REGULARIZATION_RATE)
+    )(layer)
+    layer = tf.keras.layers.Dense(units=len(GENRES))(layer)
     layer = tf.keras.layers.Activation('softmax', name='output_realtime')(layer)
     model_output = layer
     model = tf.keras.models.Model(model_input, model_output)
