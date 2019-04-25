@@ -20,9 +20,9 @@ BATCH_SIZE = 32
 EPOCH_COUNT = 60
 
 
-def train_model(data):
-    x = data['x']
-    y = data['y']
+def train_model(train_data, model_path):
+    x = train_data['x']
+    y = train_data['y']
     (x_train, x_val, y_train, y_val) = train_test_split(x, y, test_size=VAL_SIZE, random_state=SEED)
 
     print('Building model...')
@@ -54,8 +54,18 @@ def train_model(data):
     )
 
     print('Training...')
-    model.fit(x_train, y_train, batch_size=BATCH_SIZE, epochs=EPOCH_COUNT,
-              validation_data=(x_val, y_val), verbose=1)
+    model.fit(
+        x_train, y_train, batch_size=BATCH_SIZE, nb_epoch=EPOCH_COUNT,
+        validation_data=(x_val, y_val), verbose=1, callbacks=[
+            tf.keras.callbacks.ModelCheckpoint(
+                model_path, save_best_only=True, monitor='val_acc', verbose=1
+            ),
+            tf.keras.callbacks.ReduceLROnPlateau(
+                monitor='val_acc', factor=0.5, patience=10, min_delta=0.01,
+                verbose=1
+            )
+        ]
+    )
 
     return model
 
@@ -68,20 +78,11 @@ if __name__ == '__main__':
                       help='path to the data pickle', metavar='DATA_PATH')
     parser.add_option('-m', '--model_path', dest='model_path',
                       default=os.path.join(os.path.dirname(__file__),
-                                           'models/model.yaml'),
-                      help='path to the output model YAML file', metavar='MODEL_PATH')
-    parser.add_option('-w', '--weights_path', dest='weights_path',
-                      default=os.path.join(os.path.dirname(__file__),
-                                           'models/weights.h5'),
-                      help='path to the output model weights hdf5 file',
-                      metavar='WEIGHTS_PATH')
+                                           'models/model.h5'),
+                      help='path to the output model HDF5 file', metavar='MODEL_PATH')
     options, args = parser.parse_args()
 
     with open(options.data_path, 'rb') as f:
         data = pickle.load(f)
 
-    model = train_model(data)
-
-    with open(options.model_path, 'w') as f:
-        f.write(model.to_yaml())
-    model.save_weights(options.weights_path)
+    train_model(data, options.model_path)
