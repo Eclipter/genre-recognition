@@ -1,18 +1,19 @@
 import os
 import pickle
 from optparse import OptionParser
-
 from sklearn.model_selection import train_test_split
-from tensorflow.keras.layers import Input, Dense, Dropout, Activation, LSTM, \
-    Convolution1D, MaxPooling1D
-from tensorflow.keras.models import Model
-from tensorflow.keras.optimizers import RMSprop
+import tensorflow as tf
 
 from common import GENRES
 
+DROPOUT_RATE = 0.5
+
+POOL_SIZE = 2
+
 SEED = 42
+VAL_SIZE = 0.3
 N_LAYERS = 3
-FILTER_LENGTH = 5
+CONV_KERNEL_SIZE = 5
 CONV_FILTER_COUNT = 256
 LSTM_COUNT = 256
 BATCH_SIZE = 32
@@ -22,34 +23,33 @@ EPOCH_COUNT = 60
 def train_model(data):
     x = data['x']
     y = data['y']
-    (x_train, x_val, y_train, y_val) = train_test_split(x, y, test_size=0.3,
-                                                        random_state=SEED)
+    (x_train, x_val, y_train, y_val) = train_test_split(x, y, test_size=VAL_SIZE, random_state=SEED)
 
     print('Building model...')
 
     n_features = x_train.shape[2]
     input_shape = (None, n_features)
-    model_input = Input(input_shape, name='input')
+    model_input = tf.keras.layers.Input(input_shape, name='input')
     layer = model_input
     for i in range(N_LAYERS):
-        layer = Convolution1D(
+        layer = tf.keras.layers.Convolution1D(
             filters=CONV_FILTER_COUNT,
-            kernel_size=FILTER_LENGTH,
+            kernel_size=CONV_KERNEL_SIZE,
             name='convolution_' + str(i + 1)
         )(layer)
-        layer = Activation('relu')(layer)
-        layer = MaxPooling1D(2)(layer)
+        layer = tf.keras.layers.Activation('relu')(layer)
+        layer = tf.keras.layers.MaxPooling1D(POOL_SIZE)(layer)
 
-    layer = Dropout(0.5)(layer)
-    layer = LSTM(LSTM_COUNT)(layer)
-    layer = Dense(len(GENRES))(layer)
-    layer = Activation('softmax', name='output_realtime')(layer)
+    layer = tf.keras.layers.Dropout(DROPOUT_RATE)(layer)
+    layer = tf.keras.layers.LSTM(LSTM_COUNT)(layer)
+    layer = tf.keras.layers.Dense(len(GENRES))(layer)
+    layer = tf.keras.layers.Activation('softmax', name='output_realtime')(layer)
     model_output = layer
-    model = Model(model_input, model_output)
-    opt = RMSprop(lr=0.00001)
+    model = tf.keras.models.Model(model_input, model_output)
+    optimizer = tf.keras.optimizers.Adam(lr=0.001)
     model.compile(
         loss='categorical_crossentropy',
-        optimizer=opt,
+        optimizer=optimizer,
         metrics=['accuracy']
     )
 
