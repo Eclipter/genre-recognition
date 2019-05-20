@@ -72,7 +72,8 @@ def train_model(train_data, model_path):
             tf.keras.callbacks.ReduceLROnPlateau(
                 monitor='val_acc', factor=0.5, patience=10, min_delta=0.01,
                 verbose=1
-            )
+            ),
+            tf.keras.callbacks.TensorBoard(log_dir='./graph', histogram_freq=0, write_graph=True, write_images=True)
         ]
     )
 
